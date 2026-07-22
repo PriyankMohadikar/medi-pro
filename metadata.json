@@ -1,0 +1,6 @@
+{
+  "name": "MediPrice Pro",
+  "description": "Enterprise clinical pricing platform, featuring real-time dashboards, an interactive package builder, and a Gemini-powered pricing assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
