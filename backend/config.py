@@ -98,12 +98,16 @@ class Settings:
 
 def load_settings() -> Settings:
     """
-    Load database settings from the .env file.
-    Ensures .env exists (creating from .env.example if needed)
-    before reading values.
+    Load database settings from environment variables and .env file.
+    System environment variables (e.g., Render/Cloud) take precedence over .env file defaults.
     """
-    ensure_env_file()
-    load_dotenv(BASE_DIR / ".env", override=True)
+    env_path = BASE_DIR / ".env"
+    if env_path.exists():
+        load_dotenv(env_path, override=False)
+    else:
+        env_example_path = BASE_DIR / ".env.example"
+        if env_example_path.exists():
+            load_dotenv(env_example_path, override=False)
 
     raw_db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL") or ""
 
@@ -113,6 +117,7 @@ def load_settings() -> Settings:
         DB_NAME=os.getenv("DB_NAME", "healthcare_pricing"),
         DB_USER=os.getenv("DB_USER", "postgres"),
         DB_PASSWORD=os.getenv("DB_PASSWORD", "root"),
+
         DATABASE_URL=raw_db_url,
         
         OLLAMA_HOST=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
