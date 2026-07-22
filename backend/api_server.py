@@ -68,13 +68,16 @@ async def lifespan(app: FastAPI):
     create_tables(engine)
     logger.info("Database tables verified/created")
 
-    logger.info("Checking Ollama status...")
-    ollama_status = await ensure_ollama_ready()
-    if ollama_status["running"] and ollama_status["model_loaded"]:
-        logger.info("Ollama Connected")
-        logger.info("Model Ready")
+    if settings.AI_PROVIDER.lower() == "ollama":
+        logger.info("Checking Ollama status...")
+        ollama_status = await ensure_ollama_ready()
+        if ollama_status["running"] and ollama_status["model_loaded"]:
+            logger.info("Ollama Connected")
+            logger.info("Model Ready")
+        else:
+            logger.warning(f"Ollama check issue: {ollama_status['message']}")
     else:
-        logger.warning(f"Ollama check issue: {ollama_status['message']}")
+        logger.info(f"Cloud AI Provider active: {settings.AI_PROVIDER.upper()}")
         
     logger.info("Application Ready")
 
