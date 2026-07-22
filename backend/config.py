@@ -70,7 +70,7 @@ class Settings:
     def database_url(self) -> str:
         """SQLAlchemy connection URL for the target database (supports Supabase/Cloud PostgreSQL)."""
         if self.DATABASE_URL:
-            url = self.DATABASE_URL.strip()
+            url = self.DATABASE_URL.strip().strip("'").strip('"')
             # Normalize postgres:// to postgresql+psycopg2:// if needed
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+psycopg2://", 1)
@@ -96,6 +96,21 @@ class Settings:
         )
 
 
+def mask_database_url(url: str) -> str:
+    """Mask the password in a database connection URL for safe logging."""
+    if not url:
+        return "<empty>"
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        if parsed.password:
+            masked_netloc = parsed.netloc.replace(f":{parsed.password}@", ":****@")
+            return parsed._replace(netloc=masked_netloc).geturl()
+        return url
+    except Exception:
+        return "<invalid_url_format>"
+
+
 def load_settings() -> Settings:
     """
     Load database settings from environment variables and .env file.
@@ -110,6 +125,8 @@ def load_settings() -> Settings:
             load_dotenv(env_example_path, override=False)
 
     raw_db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL") or ""
+    if raw_db_url:
+        raw_db_url = raw_db_url.strip().strip("'").strip('"')
 
     return Settings(
         DB_HOST=os.getenv("DB_HOST", "localhost"),
@@ -135,4 +152,5 @@ def load_settings() -> Settings:
         GEMINI_MODEL=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
         ALLOWED_ORIGINS=os.getenv("ALLOWED_ORIGINS", ""),
     )
+
 

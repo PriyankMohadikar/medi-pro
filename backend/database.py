@@ -14,8 +14,9 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from config import Settings
+from config import Settings, mask_database_url
 from models import Base
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +65,24 @@ def ensure_database_exists(settings: Settings) -> None:
 def get_engine(settings: Settings):
     """
     Create and return a SQLAlchemy engine for the target database.
+    Logs masked connection information for runtime verification.
     """
+    db_url = settings.database_url
+    masked_url = mask_database_url(db_url)
+    logger.info(f"[DB INIT] Target Database URL: {masked_url}")
+
+    try:
+        parsed = urlparse(db_url)
+        host = parsed.hostname or settings.DB_HOST
+        port = parsed.port or settings.DB_PORT
+        user = parsed.username or settings.DB_USER
+        dbname = parsed.path.lstrip("/") or settings.DB_NAME
+        logger.info(f"[DB CONFIG] User: {user} | Host: {host}:{port} | Database: {dbname}")
+    except Exception as e:
+        logger.warning(f"[DB CONFIG] Could not parse DB URL metadata: {e}")
+
     engine = create_engine(
-        settings.database_url,
+        db_url,
         echo=False,
         pool_pre_ping=True,
         pool_size=5,
@@ -100,9 +116,24 @@ def test_connection(engine) -> bool:
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        logger.info("Database connection verified successfully")
+        logger.info("[OK] Database connection verified successfully")
         print("[OK] Database Connected")
         return True
     except Exception as e:
-        logger.error(f"Database connection failed: {e}")
+        err_msg = str(e)
+        logger.error(f"[DB ERROR] Database connection failed: {err_msg}")
+        if "password authentication failed" in err_msg.lower():
+            logger.error(
+                "[DB DIAGNOSTIC] Authentication failed! Check:\n"
+                "  1. Username on port 6543 MUST be in format 'postgres.<project_ref>' (e.g. postgres.bnccejadsruqxkniiwrn)\n"
+                "  2. Special characters in password must be URL encoded (e.g. %21 for '!').\n"
+                "  3. No surrounding quotes or extra line breaks in DATABASE_URL."
+            )
+        elif "could not connect" in err_msg.lower() or "timeout" in err_msg.lower() or "refused" in err_msg.lower():
+            logger.error(
+                "[DB DIAGNOSTIC] Network unreachable! Check:\n"
+                "  1. Use port 6543 pooler (aws-0-ap-southeast-1.pooler.supabase.com) for Supabase IPv4 support.\n"
+                "  2. Ensure sslmode=require is appended to the connection string."
+            )
         raise
+

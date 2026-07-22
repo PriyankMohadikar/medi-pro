@@ -11,16 +11,20 @@ IMPORTANT: Does NOT call Base.metadata.create_all().
 """
 
 import logging
+from urllib.parse import urlparse
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config import load_settings
+from config import load_settings, mask_database_url
 
 logger = logging.getLogger(__name__)
 
 # Load settings once at module level
 settings = load_settings()
+
+masked_url = mask_database_url(settings.database_url)
+logger.info(f"[APP DB INIT] Target Database URL: {masked_url}")
 
 # Create engine
 engine = create_engine(
@@ -60,3 +64,4 @@ def test_connection() -> bool:
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
         raise
+
