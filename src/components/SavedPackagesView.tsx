@@ -394,43 +394,67 @@ export default function SavedPackagesView({ formatPrice, onEditPackage }: SavedP
       )}
 
       {/* ── Delete Confirmation Dialog ─────────────────────── */}
-      {/* Delete Confirmation Modal */}
       {deleteConfirm !== null && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setDeleteConfirm(null)}>
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" 
+          onClick={() => setDeleteConfirm(null)}
+        >
           <div
-            className="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-slate-200 p-6 animate-fadeInUp"
+            className="bg-white rounded-3xl w-full max-w-[440px] shadow-2xl border border-slate-100 p-6 sm:p-7 animate-fadeInUp relative flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
-                <Trash2 className="w-5 h-5 text-red-500" />
+            {/* Header / Icon */}
+            <div className="flex items-start gap-4 mb-3">
+              <div className="w-12 h-12 bg-red-100/80 border border-red-200/60 rounded-2xl flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6 text-red-600" />
               </div>
-              <div>
-                <h3 className="font-display text-lg font-bold text-slate-800">Delete Package</h3>
-                <p className="text-xs text-slate-400">This action cannot be undone</p>
+              <div className="pt-0.5">
+                <h3 className="font-display text-xl font-bold text-slate-900 leading-tight">Delete Package</h3>
+                <p className="text-xs font-semibold text-red-500 mt-0.5">This action cannot be undone</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mb-6">
-              Are you sure you want to delete this package? All associated test data will be permanently removed.
+
+            {/* Target Package Info Card */}
+            {(() => {
+              const targetPkg = packages.find(p => p.package_id === deleteConfirm);
+              return targetPkg ? (
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 my-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Package</span>
+                    <span className="text-sm font-bold text-slate-800 truncate block">{targetPkg.package_name}</span>
+                  </div>
+                  <span className="text-sm font-bold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shrink-0">
+                    {formatPrice(targetPkg.package_price)}
+                  </span>
+                </div>
+              ) : null;
+            })()}
+
+            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+              Are you sure you want to delete this package? All associated tests and pricing data will be permanently removed.
             </p>
-            <div className="flex gap-3">
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
               <button
+                type="button"
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors text-sm"
+                className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all text-sm"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={actionLoading === deleteConfirm}
-                className="flex-1 px-4 py-2.5 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold rounded-xl shadow-lg shadow-red-500/25 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {actionLoading === deleteConfirm ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Trash2 className="w-4 h-4" />
                 )}
-                Delete
+                <span>Delete</span>
               </button>
             </div>
           </div>
