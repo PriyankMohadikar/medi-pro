@@ -39,8 +39,8 @@ export default function AiAssistantView({ currency }: AiAssistantViewProps) {
   const [error, setError] = useState<string | null>(null);
   
   // Provider Selection State
-  const [selectedProvider, setSelectedProvider] = useState<string>("automatic");
-  const [actualProvider, setActualProvider] = useState<string>("automatic");
+  const [selectedProvider, setSelectedProvider] = useState<string>("groq2");
+  const [actualProvider, setActualProvider] = useState<string>("groq2");
   const [providerStatus, setProviderStatus] = useState<"connected" | "error" | "checking">("checking");
   
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -57,7 +57,7 @@ export default function AiAssistantView({ currency }: AiAssistantViewProps) {
 
   useEffect(() => {
     // Initial health check
-    handleProviderChange("automatic");
+    handleProviderChange("groq2");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
