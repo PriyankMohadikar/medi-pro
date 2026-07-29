@@ -2,7 +2,7 @@
 Chat API Router
 
 POST /chat → Accept user question, return response
-             (Currently placeholder — Ollama integration pending for Stage 3)
+             (Currently placeholder — AI integration pending for Stage 3)
 """
 
 import logging
@@ -21,7 +21,7 @@ router = APIRouter(tags=["Chat"])
 @router.post(
     "/chat",
     response_model=ChatResponse,
-    summary="AI Chat endpoint (Ollama pending)",
+    summary="AI Chat endpoint",
 )
 def chat(
     request: ChatRequest,
@@ -31,7 +31,7 @@ def chat(
     POST /chat: Accept a user question and return a response.
 
     Currently returns a placeholder response.
-    In Stage 3, this endpoint will be connected to Ollama AI
+    In Stage 3, this endpoint will be connected to the AI provider
     which will use function/tool calling to query PostgreSQL
     via the service layer.
     """

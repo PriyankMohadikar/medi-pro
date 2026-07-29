@@ -171,6 +171,25 @@ class PackageTest(Base):
         return f"<PackageTest(id={self.id}, test='{self.test_name}')>"
 
 
+class TestCost(Base):
+    """
+    Internal processing cost for a diagnostic test.
+
+    Stores the actual lab/operational cost for each test, used for
+    profitability analysis and pricing optimization. One entry per
+    unique test_name (matches test_pricing.test_name).
+    """
+
+    __tablename__ = "test_costs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    test_name = Column(Text, nullable=False, unique=True, index=True)
+    cost_price = Column(Numeric(10, 2), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<TestCost(id={self.id}, test='{self.test_name}', cost={self.cost_price})>"
+
+
 class CustomPackage(Base):
     """
     User-created custom healthcare package.

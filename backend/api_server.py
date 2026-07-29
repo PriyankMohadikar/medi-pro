@@ -29,7 +29,6 @@ from sqlalchemy.orm import Session
 from config import load_settings
 from database import get_engine, get_session_factory, create_tables
 from models import PackagePricing, PackageTest, Provider, TestPricing
-from ollama_utils import ensure_ollama_ready, check_ollama_status, is_model_available
 import time
 
 # ---------------------------------------------------------------------------
@@ -68,16 +67,7 @@ async def lifespan(app: FastAPI):
     create_tables(engine)
     logger.info("Database tables verified/created")
 
-    if settings.AI_PROVIDER.lower() == "ollama":
-        logger.info("Checking Ollama status...")
-        ollama_status = await ensure_ollama_ready()
-        if ollama_status["running"] and ollama_status["model_loaded"]:
-            logger.info("Ollama Connected")
-            logger.info("Model Ready")
-        else:
-            logger.warning(f"Ollama check issue: {ollama_status['message']}")
-    else:
-        logger.info(f"Cloud AI Provider active: {settings.AI_PROVIDER.upper()}")
+    logger.info("Cloud AI Providers configured (Groq/OpenRouter).")
         
     logger.info("Application Ready")
 
@@ -116,7 +106,7 @@ app.add_middleware(
 )
 
 
-from chat_router import router as chat_router
+from ai import chat_router
 app.include_router(chat_router)
 
 from custom_packages_router import router as custom_packages_router
@@ -146,17 +136,11 @@ async def health_check():
 
         start_time = time.time()
         
-        # Check ollama asynchronously
-        ollama_running = await check_ollama_status()
-        model_loaded = await is_model_available(settings.OLLAMA_MODEL) if ollama_running else False
-        
         response_time = round((time.time() - start_time) * 1000, 2)
         
         return {
             "status": "ok",
             "database": "connected",
-            "ollama": "Running" if ollama_running else "Not Running",
-            "model_loaded": model_loaded,
             "response_time_ms": response_time,
             "rows": {
                 "providers": provider_count,

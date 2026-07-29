@@ -48,17 +48,14 @@ class Settings:
     DATABASE_URL: str = ""
     
     # AI Provider configuration
-    AI_PROVIDER: str = "ollama"
-    GROQ_API_KEY: str = ""
+    GROQ_API_KEY_1: str = ""
+    GROQ_API_KEY_2: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
-    OPENROUTER_API_KEY: str = ""
+    
+    OPENROUTER_API_KEY_1: str = ""
+    OPENROUTER_API_KEY_2: str = ""
     OPENROUTER_MODEL: str = "openrouter/free"
-    GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-3.5-flash"
 
-    # Ollama settings
-    OLLAMA_HOST: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "qwen2.5:7b"
     TEMPERATURE: float = 0.2
     TOP_P: float = 0.9
     NUM_PREDICT: int = 512
@@ -137,19 +134,17 @@ def load_settings() -> Settings:
 
         DATABASE_URL=raw_db_url,
         
-        OLLAMA_HOST=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
-        OLLAMA_MODEL=os.getenv("OLLAMA_MODEL", "qwen2.5:7b"),
         TEMPERATURE=float(os.getenv("TEMPERATURE", "0.2")),
         TOP_P=float(os.getenv("TOP_P", "0.9")),
         NUM_PREDICT=int(os.getenv("NUM_PREDICT", "512")),
         
-        AI_PROVIDER=os.getenv("AI_PROVIDER", "ollama"),
-        GROQ_API_KEY=os.getenv("GROQ_API_KEY", ""),
+        GROQ_API_KEY_1=os.getenv("GROQ_API_KEY_1", ""),
+        GROQ_API_KEY_2=os.getenv("GROQ_API_KEY_2", ""),
         GROQ_MODEL=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
-        OPENROUTER_API_KEY=os.getenv("OPENROUTER_API_KEY", ""),
+        
+        OPENROUTER_API_KEY_1=os.getenv("OPENROUTER_API_KEY_1", ""),
+        OPENROUTER_API_KEY_2=os.getenv("OPENROUTER_API_KEY_2", ""),
         OPENROUTER_MODEL=os.getenv("OPENROUTER_MODEL", "openrouter/free"),
-        GEMINI_API_KEY=os.getenv("GEMINI_API_KEY", ""),
-        GEMINI_MODEL=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
         ALLOWED_ORIGINS=os.getenv("ALLOWED_ORIGINS", ""),
     )
 

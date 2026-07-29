@@ -42,6 +42,13 @@ project_backups/
 *.db
 *.sqlite
 
+# One-off Scripts
+backend/inspect_local.py
+backend/migrate_costs.py
+backend/validate_supabase.py
+backend/verify_tools.py
+backend/seed_test_costs.py
+
 # OS & Editor Files
 .DS_Store
 .vscode/

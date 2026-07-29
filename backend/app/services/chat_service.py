@@ -1,12 +1,12 @@
 """
-Chat Service — Placeholder for Ollama AI integration (Stage 3).
+Chat Service — Placeholder for AI integration (Stage 3).
 
 This module exposes Python functions that will later be
-registered as tools/functions for Ollama to call.
+registered as tools/functions for the AI to call.
 
 Currently returns placeholder responses.
 
-Functions exposed for Ollama tool-calling:
+Functions exposed for AI tool-calling:
   - compare_test_prices()
   - calculate_margin()
   - build_custom_package()
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 # ────────────────────────────────────────────────────────────
-# Functions that will be exposed to Ollama as tools
+# Functions that will be exposed to the AI as tools
 # ────────────────────────────────────────────────────────────
 
 def chat_compare_test_prices(
@@ -47,7 +47,7 @@ def chat_compare_test_prices(
     city: Optional[str] = None,
 ) -> dict:
     """
-    Compare test prices — callable by Ollama.
+    Compare test prices — callable by the AI.
     Returns a dictionary suitable for JSON serialization.
     """
     result = compare_test_prices(db, test_names, city)
@@ -56,7 +56,7 @@ def chat_compare_test_prices(
 
 def chat_calculate_margin(price: float, margin: float) -> dict:
     """
-    Calculate margin — callable by Ollama.
+    Calculate margin — callable by the AI.
     """
     request = MarginRequest(price=price, margin=margin)
     result = calculate_margin(request)
@@ -70,7 +70,7 @@ def chat_build_custom_package(
     margin: float = 20.0,
 ) -> dict:
     """
-    Build custom package — callable by Ollama.
+    Build custom package — callable by the AI.
     """
     request = CustomPackageRequest(tests=test_names, city=city, margin=margin)
     result = build_custom_package(db, request)
@@ -79,7 +79,7 @@ def chat_build_custom_package(
 
 def chat_get_market_analytics(db: Session) -> dict:
     """
-    Get market analytics — callable by Ollama.
+    Get market analytics — callable by the AI.
     """
     result = get_market_average(db)
     return result.model_dump()
@@ -87,7 +87,7 @@ def chat_get_market_analytics(db: Session) -> dict:
 
 def chat_get_provider_rankings(db: Session) -> dict:
     """
-    Get competitor analytics — callable by Ollama.
+    Get competitor analytics — callable by the AI.
     """
     result = get_competitor_analytics(db)
     return result.model_dump()
@@ -103,15 +103,15 @@ def handle_chat(db: Session, request: ChatRequest) -> ChatResponse:
 
     Currently returns a placeholder response.
     In Stage 3, this will:
-      1. Send the user question to Ollama
-      2. Ollama will decide which tool/function to call
+      1. Send the user question to the AI provider
+      2. The AI will decide which tool/function to call
       3. Execute the function against PostgreSQL
-      4. Return the result to the user via Ollama's response
+      4. Return the result to the user via the AI's response
     """
     logger.info(f"Chat request received: {request.question}")
 
     return ChatResponse(
         question=request.question,
-        answer="Chat service ready. Ollama integration pending.",
+        answer="Chat service ready. AI integration pending.",
         source="placeholder",
     )

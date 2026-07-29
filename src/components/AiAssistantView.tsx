@@ -39,8 +39,9 @@ export default function AiAssistantView({ currency }: AiAssistantViewProps) {
   const [error, setError] = useState<string | null>(null);
   
   // Provider Selection State
-  const [selectedProvider, setSelectedProvider] = useState<string>("ollama");
-  const [providerStatus, setProviderStatus] = useState<"connected" | "error" | "checking">("connected");
+  const [selectedProvider, setSelectedProvider] = useState<string>("automatic");
+  const [actualProvider, setActualProvider] = useState<string>("automatic");
+  const [providerStatus, setProviderStatus] = useState<"connected" | "error" | "checking">("checking");
   
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -53,6 +54,12 @@ export default function AiAssistantView({ currency }: AiAssistantViewProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
+
+  useEffect(() => {
+    // Initial health check
+    handleProviderChange("automatic");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -79,11 +86,12 @@ export default function AiAssistantView({ currency }: AiAssistantViewProps) {
     setError(null);
     try {
       const { checkAiHealth } = await import("../api");
-      await checkAiHealth(newProvider);
+      const health = await checkAiHealth(newProvider);
+      setActualProvider(health.provider);
       setProviderStatus("connected");
     } catch (err) {
       setProviderStatus("error");
-      setError(`Failed to connect to ${newProvider}. Reverting back.`);
+      setError(`Failed to connect to AI provider. Reverting back.`);
       setTimeout(() => {
         setSelectedProvider(previous);
         setProviderStatus("connected");
@@ -185,7 +193,13 @@ export default function AiAssistantView({ currency }: AiAssistantViewProps) {
               background: providerStatus === "connected" ? "#22c55e" : providerStatus === "checking" ? "#eab308" : "#dc2626",
               boxShadow: providerStatus === "connected" ? "0 0 6px rgba(34,197,94,0.5)" : "none"
             }} />
-            {providerStatus === "checking" ? "Checking Connection..." : `Connected to ${selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)}`}
+            {providerStatus === "checking" ? "Checking Connection..." : `Connected to ${
+              actualProvider === 'groq1' ? 'Groq API 1' : 
+              actualProvider === 'groq2' ? 'Groq API 2' : 
+              actualProvider === 'openrouter1' ? 'OpenRouter API 1' : 
+              actualProvider === 'openrouter2' ? 'OpenRouter API 2' : 
+              actualProvider
+            }`}
           </span>
           <span style={styles.dot} />
           <span style={styles.headerSubtitle}>Healthcare Pricing Intelligence</span>
@@ -200,9 +214,9 @@ export default function AiAssistantView({ currency }: AiAssistantViewProps) {
             <div style={styles.welcomeIcon}>
               <Bot style={{ width: 32, height: 32, color: "#6366f1" }} />
             </div>
-            <h2 style={styles.welcomeTitle}>AI Pricing Assistant</h2>
+            <h2 style={styles.welcomeTitle}>Pricing Intelligence Consultant</h2>
             <p style={styles.welcomeSubtitle}>
-              Ask me anything about Pricing, Competitors, Packages, Margin Optimization, or Healthcare Pricing. I use your real PostgreSQL data to provide accurate insights.
+              Healthcare pricing intelligence powered by your real database. Ask about test pricing, competitor analysis, package optimization, margin strategy, or revenue growth opportunities.
             </p>
 
             <div style={styles.welcomeGrid}>
@@ -391,7 +405,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <span style={styles.senderName}>{isUser ? "You" : "AI Assistant"}</span>
+            <span style={styles.senderName}>{isUser ? "You" : "Pricing Consultant"}</span>
             <span style={styles.timestamp}>{msg.timestamp}</span>
           </div>
 
@@ -482,9 +496,11 @@ const InputBox = React.forwardRef<
             cursor: loading ? "not-allowed" : "pointer"
           }}
         >
-          {!isProduction && <option value="ollama">Ollama</option>}
-          <option value="groq">Groq</option>
-          <option value="openrouter">OpenRouter</option>
+          <option value="automatic">Automatic (Default)</option>
+          <option value="groq2">Groq API 2</option>
+          <option value="openrouter2">OpenRouter API 2</option>
+          <option value="groq1">Groq API 1</option>
+          <option value="openrouter1">OpenRouter API 1</option>
         </select>
       </div>
 
@@ -499,7 +515,7 @@ const InputBox = React.forwardRef<
           }
         }}
         style={styles.textarea}
-        placeholder="Ask about pricing, competitors, packages or margins..."
+        placeholder="Ask about test pricing, packages, margins, competitor analysis, or revenue strategy..."
         rows={1}
       />
 
