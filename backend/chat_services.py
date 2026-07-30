@@ -20,11 +20,42 @@ settings = load_settings()
 engine = get_engine(settings)
 SessionFactory = get_session_factory(engine)
 
-def _get_cost_for_test(session, test_name: str) -> Optional[float]:
-    """Helper: fetch internal cost for a test name (fuzzy match)."""
-    cost_row = session.query(TestCost).filter(
-        TestCost.test_name.ilike(f"%{test_name}%")
+def _resolve_canonical_test_name(session, test_name: str) -> Optional[str]:
+    """Resolve a user/AI-provided test name to its exact canonical form in the database.
+    Uses exact case-insensitive match first, then ILIKE fallback with shortest-name preference."""
+    clean = test_name.strip().lower()
+    # 1. Exact case-insensitive match
+    exact = session.query(TestPricing.test_name).filter(
+        func.lower(TestPricing.test_name) == clean
     ).first()
+    if exact:
+        return exact[0]
+    # 2. ILIKE fallback — prefer the shortest (most specific) match
+    fuzzy = session.query(TestPricing.test_name).filter(
+        TestPricing.test_name.ilike(f"%{test_name.strip()}%")
+    ).distinct().all()
+    if fuzzy:
+        names = [r[0] for r in fuzzy]
+        names.sort(key=len)
+        return names[0]
+    return None
+
+
+def _get_cost_for_test(session, test_name: str) -> Optional[float]:
+    """Helper: fetch internal cost for a test name (exact match first, then fuzzy)."""
+    clean = test_name.strip().lower()
+    # Exact case-insensitive match first
+    cost_row = session.query(TestCost).filter(
+        func.lower(TestCost.test_name) == clean
+    ).first()
+    if not cost_row:
+        # ILIKE fallback — prefer the shortest (most specific) match
+        fuzzy = session.query(TestCost).filter(
+            TestCost.test_name.ilike(f"%{test_name.strip()}%")
+        ).all()
+        if fuzzy:
+            fuzzy.sort(key=lambda r: len(r.test_name))
+            cost_row = fuzzy[0]
     if cost_row and cost_row.cost_price is not None:
         return float(cost_row.cost_price)
     return None
@@ -47,12 +78,17 @@ def get_market_average(test_name: str, city: Optional[str] = None) -> str:
     """
     session = SessionFactory()
     try:
+        # Resolve to canonical DB test name (case-insensitive exact match first)
+        canonical = _resolve_canonical_test_name(session, test_name)
+        if not canonical:
+            return json.dumps({"error": f"No pricing data found for {test_name}"})
+
         query = session.query(
             func.min(TestPricing.price).label("lowest"),
             func.max(TestPricing.price).label("highest"),
             func.avg(TestPricing.price).label("average")
         ).join(Provider, TestPricing.provider_id == Provider.provider_id)\
-         .filter(TestPricing.test_name.ilike(f"%{test_name}%"))
+         .filter(func.lower(TestPricing.test_name) == canonical.lower())
          
         if city:
             query = query.filter(Provider.city.ilike(f"%{city}%"))
@@ -63,7 +99,7 @@ def get_market_average(test_name: str, city: Optional[str] = None) -> str:
             return json.dumps({"error": f"No pricing data found for {test_name}"})
 
         response = {
-            "test_name": test_name,
+            "test_name": canonical,
             "city": city or "All",
             "lowest_price": float(result.lowest),
             "highest_price": float(result.highest),
@@ -73,13 +109,13 @@ def get_market_average(test_name: str, city: Optional[str] = None) -> str:
         # Enrich with ES Healthcare price and internal cost
         es_row = session.query(TestPricing).join(Provider).filter(
             Provider.provider_name == "ES Healthcare",
-            TestPricing.test_name.ilike(f"%{test_name}%")
+            func.lower(TestPricing.test_name) == canonical.lower()
         ).first()
         if es_row and es_row.price is not None:
             es_price = float(es_row.price)
             response["es_price"] = es_price
 
-            cost = _get_cost_for_test(session, test_name)
+            cost = _get_cost_for_test(session, canonical)
             if cost is not None:
                 response["internal_cost"] = cost
                 response["es_profit"] = calculate_profit(es_price, cost)
@@ -104,8 +140,17 @@ def compare_tests(test_names: List[str], city: Optional[str] = None) -> str:
         results_list = []
         if not test_names:
             return json.dumps({"error": "No tests provided."})
-            
-        conditions = [TestPricing.test_name.ilike(f"%{t_name}%") for t_name in test_names]
+
+        # Resolve each test name to canonical DB name
+        resolved_names = []
+        for t_name in test_names:
+            canonical = _resolve_canonical_test_name(session, t_name)
+            if canonical:
+                resolved_names.append(canonical)
+        if not resolved_names:
+            return json.dumps({"error": "No pricing data found for the requested tests."})
+
+        conditions = [func.lower(TestPricing.test_name) == name.lower() for name in resolved_names]
         query = session.query(TestPricing, Provider)\
             .join(Provider, TestPricing.provider_id == Provider.provider_id)\
             .filter(or_(*conditions))
@@ -202,8 +247,17 @@ def build_custom_package(tests: List[str], margin_percentage: float = 0.0) -> st
         
         if not tests:
             return json.dumps({"error": "No tests provided."})
-            
-        conditions = [TestPricing.test_name.ilike(f"%{t_name}%") for t_name in tests]
+
+        # Resolve each test name to canonical DB name
+        resolved_names = []
+        for t_name in tests:
+            canonical = _resolve_canonical_test_name(session, t_name)
+            if canonical:
+                resolved_names.append(canonical)
+        if not resolved_names:
+            return json.dumps({"error": "No pricing data found for the requested tests."})
+
+        conditions = [func.lower(TestPricing.test_name) == name.lower() for name in resolved_names]
         results = session.query(TestPricing.test_name, func.avg(TestPricing.price).label('avg_price'))\
             .join(Provider, TestPricing.provider_id == Provider.provider_id)\
             .filter(Provider.provider_name == "ES Healthcare")\
@@ -380,7 +434,11 @@ def get_test_profitability(
             .filter(TestPricing.price.isnot(None))
         )
         if test_name:
-            es_query = es_query.filter(TestPricing.test_name.ilike(f"%{test_name}%"))
+            canonical = _resolve_canonical_test_name(session, test_name)
+            if canonical:
+                es_query = es_query.filter(func.lower(TestPricing.test_name) == canonical.lower())
+            else:
+                return json.dumps({"error": f"No ES Healthcare pricing data found for {test_name}"})
 
         es_results = es_query.all()
         if not es_results:
@@ -482,7 +540,11 @@ def get_discount_analysis(
             .filter(TestPricing.price.isnot(None))
         )
         if test_name:
-            es_query = es_query.filter(TestPricing.test_name.ilike(f"%{test_name}%"))
+            canonical = _resolve_canonical_test_name(session, test_name)
+            if canonical:
+                es_query = es_query.filter(func.lower(TestPricing.test_name) == canonical.lower())
+            else:
+                return json.dumps({"error": f"No pricing data found for {test_name}"})
 
         es_results = es_query.all()
         all_costs = _get_all_costs(session)
@@ -591,16 +653,19 @@ def build_profitable_package(
         missing_cost = []
 
         for t_name in tests:
-            # Get ES Healthcare price
-            es_row = (
-                session.query(TestPricing)
-                .join(Provider)
-                .filter(
-                    Provider.provider_name == "ES Healthcare",
-                    TestPricing.test_name.ilike(f"%{t_name}%"),
+            # Resolve to canonical DB name and get ES Healthcare price
+            canonical = _resolve_canonical_test_name(session, t_name)
+            es_row = None
+            if canonical:
+                es_row = (
+                    session.query(TestPricing)
+                    .join(Provider)
+                    .filter(
+                        Provider.provider_name == "ES Healthcare",
+                        func.lower(TestPricing.test_name) == canonical.lower(),
+                    )
+                    .first()
                 )
-                .first()
-            )
 
             es_price = float(es_row.price) if es_row and es_row.price else 0.0
             actual_name = es_row.test_name if es_row else t_name

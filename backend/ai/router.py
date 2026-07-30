@@ -104,15 +104,7 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     # Determine priority list of providers
     provider_list = get_provider_list(request.provider)
 
-    # Check cache
-    cached_response = faq_cache.get(request.message.strip().lower())
-    if cached_response:
-        llm_logger.info("Serving from cache.")
 
-        async def cache_stream():
-            yield cached_response
-
-        return StreamingResponse(cache_stream(), media_type="text/plain")
 
     try:
         # Audit prompt length
@@ -158,9 +150,7 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
                     max_rounds=MAX_TOOL_ROUNDS,
                     llm_logger=llm_logger,
                     start_time=start_time,
-                    faq_cache_cb=lambda text: faq_cache.set(
-                        request.message.strip().lower(), text
-                    ),
+                    faq_cache_cb=None,
                 )
             except ProviderException as pe:
                 llm_logger.warning(f"Failover triggered: {provider_name} failed. Reason: {pe}")
